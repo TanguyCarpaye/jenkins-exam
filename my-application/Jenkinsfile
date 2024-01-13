@@ -1,0 +1,106 @@
+pipeline {
+    environment {
+        DOCKER_ID = "tanguycarpaye"
+        DOCKER_IMAGE = "jenkinsdevopsexams"
+        DOCKER_TAG = "v.${BUILD_ID}.0"
+    }
+    agent any
+    stages {
+        stage('Récupérer le projet') {
+            steps {
+                script {
+                sh '''
+                 docker rm -f jenkins
+                 docker build -t $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG .
+                sleep 10
+                '''
+                }
+            }
+        }
+        stage('Construire les images Docker') {
+            steps {
+                script {
+                sh '''
+                 docker-compose build -d --name jenkins $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG
+                sleep 10
+                '''
+                }
+            }
+        }
+        stage('Test') {
+            steps {
+                script {
+                sh '''
+                curl localhost
+                '''
+                }
+            }
+        }
+        stage('Docker push') {
+            environment {
+            DOCKER_PASS = credentials("DOCKER_HUB_PASS")
+            }
+            steps {
+                script {
+                sh '''
+                docker login -u $DOCKER_ID -p $DOCKER_PASS
+                docker push $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG
+                '''
+                }
+            }
+        }
+        stage('Deploiement en dev') {
+            environment
+            {
+            KUBECONFIG = credentials("config")
+            }
+            steps {
+                script {
+                    sh 'kubectl apply -f k3s/dev -n dev'
+                }
+            }
+        }
+        stage('Deploiement sur QA') {
+            environment
+            {
+            KUBECONFIG = credentials("config")
+            }
+            steps {
+                script {
+                    sh 'kubectl apply -f k3s/qa -n qa'
+                }
+            }
+        }
+        stage('Deploiement sur Staging') {
+            environment
+            {
+            KUBECONFIG = credentials("config")
+            }
+            steps {
+                script {
+                    sh 'kubectl apply -f k3s/staging -n staging'
+                }
+            }
+        }
+        stage('Deploiement en Prod') {
+            when {
+                branch 'master'
+            }
+            environment
+            {
+            KUBECONFIG = credentials("config")
+            }
+            steps {
+                input message: "Êtes-vous sûr de vouloir déployer en prod ?", ok: "Déployer"
+                script {
+                    sh 'kubectl apply -f k3s/prod -n prod'
+                }
+            }
+        }
+    }
+    post {
+        cleanup {
+            // Code pour nettoyer l'environnement
+        }
+    }
+}
