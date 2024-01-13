@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.26.0 (40646f47)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: movie-service
+  name: movie-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: movie-service
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert
+        kompose.version: 1.26.0 (40646f47)
+      creationTimestamp: null
+      labels:
+        io.kompose.service: movie-service
+    spec:
+      containers:
+        - args:
+            - uvicorn
+            - app.main:app
+            - --reload
+            - --host
+            - 0.0.0.0
+            - --port
+            - "8000"
+          env:
+            - name: CAST-SERVICE-HOST-URL
+              value: http://cast-service:8000/api/v1/casts/
+            - name: DATABASE-URI
+              value: postgresql://movie-db-username:movie-db-password@movie-db/movie-db-dev
+          image: movie-service
+          name: movie-service
+          ports:
+            - containerPort: 8000
+          resources: {}
+          volumeMounts:
+            - mountPath: /app/
+              name: movie-service-claim0
+      restartPolicy: Always
+      volumes:
+        - name: movie-service-claim0
+          persistentVolumeClaim:
+            claimName: movie-service-claim0
+status: {}

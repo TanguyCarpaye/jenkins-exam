@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.26.0 (40646f47)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: movie-db
+  name: movie-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: movie-db
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert
+        kompose.version: 1.26.0 (40646f47)
+      creationTimestamp: null
+      labels:
+        io.kompose.service: movie-db
+    spec:
+      containers:
+        - env:
+            - name: POSTGRES-DB
+              value: movie-db-dev
+            - name: POSTGRES-PASSWORD
+              value: movie-db-password
+            - name: POSTGRES-USER
+              value: movie-db-username
+          image: postgres:12.1-alpine
+          name: movie-db
+          resources: {}
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data/
+              name: postgres-data-movie
+      restartPolicy: Always
+      volumes:
+        - name: postgres-data-movie
+          persistentVolumeClaim:
+            claimName: postgres-data-movie
+status: {}
